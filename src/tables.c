@@ -47,7 +47,7 @@ int lookup(char *str,int table){
             //if not present
             return 0;
         }
-        else if(st[index].name==str){
+        else if(!strcmp(st[index].name, str)){
             // if present
             return 1;
         }
@@ -55,7 +55,7 @@ int lookup(char *str,int table){
 
             for(int i=index+1;i!=index;i=(i+1)%1005){
                 //find index value of symbl
-                if(st[i].name==str){
+                if(!strcmp(st[i].name, str)){
                     return 1;
                 }
             }
@@ -71,7 +71,7 @@ int lookup(char *str,int table){
             if(ct[index].length==0){
                 return 0;
             }
-            else if(st[index].name==str){
+            else if(!strcmp(ct[index].name, str)){
                 // if present
                 return 1;
             }
@@ -79,7 +79,7 @@ int lookup(char *str,int table){
 
                 for(int i=index+1;i!=index;i=(i+1)%1005){
                     //find index value of symbl
-                    if(ct[index].name==str){
+                    if(!strcmp(ct[index].name, str)){
                         return 1;
                     }
                 }
@@ -173,22 +173,22 @@ void insert(char *str1,char *str2,int table){
 //Function to print tables
 void PrintTables(){
 
-    printf("\nSYMBOL TABLE\n\n");
+    printf("================\nSYMBOL TABLE\n================\n");
 
     for(int i=0;i<1005;i++){
 
         if(st[i].length==0){
             continue;
         }
-        printf("\t%s\t\t\t%s\n",st[i].name, st[i].type);
+        printf("\t%s\t\t|\t%s\n",st[i].name, st[i].type);
     }
-    printf("\n\nCONSTANT TABLE\n\n");
+    printf("\n===============\nCONSTANT TABLE\n===============\n");
 		for(int i = 0 ; i < 1005 ; i++)
 		{
 			if(ct[i].length == 0)
 				continue;
 
-			printf("\t%s\t\t\t%s\n",ct[i].name, ct[i].type);
+			printf("\t%s\t\t|\t%s\n",ct[i].name, ct[i].type);
 		}
 
 }

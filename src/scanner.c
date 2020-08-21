@@ -11,56 +11,55 @@ int main() {
     while (token) {
         switch (token) {
             case KEYWORD:
-                printf("Keyword!! ");
-                printf("%s %d\n", yytext, yylineno);
+                printf("Keyword\t");
+                printf("%s\t%d\n", yytext, yylineno);
                 break;
             case IDENTIFIER:
-                printf("Identifier!! ");
-                printf("%s %d\n", yytext, yylineno);
+                printf("Identifier\t");
+                printf("%s\t%d\n", yytext, yylineno);
                 break;
             case SPECIAL_SYM:
-                printf("Special Symbol!! ");
-                printf("%s %d\n", yytext, yylineno);
+                printf("Special Symbol\t");
+                printf("%s\t%d\n", yytext, yylineno);
                 break;
             case OPERATOR:
-                printf("Operator!! ");
-                printf("%s %d\n", yytext, yylineno); 
+                printf("Operator\t");
+                printf("%s\t%d\n", yytext, yylineno); 
                 break;
             case CONSTANT:
-                printf("Constant!! ");
-                printf("%s %d\n", yytext, yylineno);
+                printf("Constant\t");
+                printf("%s\t%d\n", yytext, yylineno);
                 break;
             case S_COMMENT:
-                printf("Single Comment!! ");
-                printf("%s %d\n", yytext, yylineno);
+                printf("Single Comment\t");
+                printf("%s\t%d\n", yytext, yylineno);
                 break;
             case M_COMMENT:
-                printf("Multiline Comments!! ");
-                printf("%s %d\n", yytext, yylineno);
+                printf("Multiline Comments\t");
+                printf("%s\t%d\n", yytext, yylineno);
                 break;
             default:
-                printf("Not identified!!\n");
-                printf("%s %d\n", yytext, yylineno);
+                printf("%s\t%d\n", yytext, yylineno);
                 if (token == NONE) {
-                    printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
+                    printf("-------------------------------------------------------------\n");
                     if(yytext[0]=='#')
                     {
-                        printf("ERROR: Error in Pre-Processor directive at line no. %d\n",yylineno);
+                        printf("err: Error in Pre-Processor directive at line no. %d\n",yylineno);
                     }
                     else if(yytext[0]=='/')
                     {
-                        printf("ERROR: UNMATCHED_COMMENT at line no. %d\n",yylineno);
+                        printf("err: unmatched comment at line no. %d\n",yylineno);
                     }
                     else if(yytext[0]=='"')
                     {
-                        printf("ERROR: INCOMPLETE_STRING at line no. %d\n",yylineno);
+                        printf("err: incomplete string at line no. %d\n",yylineno);
                     }
                     else
                     {
-                        printf("ERROR: at line no. %d\n",yylineno);
+                        printf("err: at line no. %d\n",yylineno);
                     }
                     printf("\t%s\n", yytext);
-                    printf("\t^^\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
+                    printf("\t^^\n-------------------------------------------------------------\n");
                 }
                 break;
         }
