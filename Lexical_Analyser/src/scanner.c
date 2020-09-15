@@ -31,12 +31,12 @@ int main() {
                 printf("%s\t%d\n", yytext, yylineno);
                 break;
             case S_COMMENT:
-                printf("Single Comment\t");
-                printf("%s\t%d\n", yytext, yylineno);
+                /* printf("Single Comment\t"); */
+                /* printf("%s\t%d\n", yytext, yylineno); */
                 break;
             case M_COMMENT:
-                printf("Multiline Comments\t");
-                printf("%s\t%d\n", yytext, yylineno);
+                /* printf("Multiline Comments\t"); */
+                /* printf("%s\t%d\n", yytext, yylineno); */
                 break;
             default:
                 printf("%s\t%d\n", yytext, yylineno);
