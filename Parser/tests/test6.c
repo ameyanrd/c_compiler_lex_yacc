@@ -10,7 +10,7 @@ int main()
     }while(n == 1);
     if(n < 2)
     {
-    	i = 1;
+    	i = 1
     }
     else
     {
