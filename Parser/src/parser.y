@@ -9,11 +9,6 @@
 	void insV();
 	int flag=0;
 
-	#define ANSI_COLOR_RED		"\x1b[31m"
-	#define ANSI_COLOR_GREEN	"\x1b[32m"
-	#define ANSI_COLOR_CYAN		"\x1b[36m"
-	#define ANSI_COLOR_RESET	"\x1b[0m"
-
 	extern char curid[20];
 	extern char curtype[20];
 	extern char curval[20];
@@ -34,27 +29,27 @@
 
 %nonassoc ELSE
 
-%right leftshift_assignment_operator rightshift_assignment_operator
-%right XOR_assignment_operator OR_assignment_operator
-%right AND_assignment_operator modulo_assignment_operator
-%right multiplication_assignment_operator division_assignment_operator
-%right addition_assignment_operator subtraction_assignment_operator
-%right assignment_operator
+%right leftshift_assignment_op rightshift_assignment_op
+%right XOR_assignment_op OR_assignment_op
+%right AND_assignment_op modulo_assignment_op
+%right multiplication_assignment_op division_assignment_op
+%right addition_assignment_op subtraction_assignment_op
+%right assignment_op
 
-%left OR_operator
-%left AND_operator
-%left pipe_operator
-%left caret_operator
-%left amp_operator
-%left equality_operator inequality_operator
-%left lessthan_assignment_operator lessthan_operator greaterthan_assignment_operator greaterthan_operator
-%left leftshift_operator rightshift_operator 
-%left add_operator subtract_operator
-%left multiplication_operator division_operator modulo_operator
+%left OR_op
+%left AND_op
+%left pipe_op
+%left caret_op
+%left amp_op
+%left equality_op inequality_op
+%left lessthan_assignment_op lessthan_op greaterthan_assignment_op greaterthan_op
+%left leftshift_op rightshift_op 
+%left add_op subtract_op
+%left multiplication_op division_op modulo_op
 
 %right SIZEOF
-%right tilde_operator exclamation_operator
-%left increment_operator decrement_operator 
+%right tilde_op exclamation_op
+%left increment_op decrement_op 
 
 
 %start program
@@ -89,7 +84,7 @@ V
 variable_declaration_identifier 
 			: identifier { ins(); } vdi;
 
-vdi : identifier_array_type | assignment_operator expression ; 
+vdi : identifier_array_type | assignment_op expression ; 
 
 identifier_array_type
 			: '[' initilization_params
@@ -202,10 +197,10 @@ break_statement
 			: BREAK ';' ;
 
 string_initilization
-			: assignment_operator string_constant { insV(); };
+			: assignment_op string_constant { insV(); };
 
 array_initialization
-			: assignment_operator '{' array_int_declarations '}';
+			: assignment_op '{' array_int_declarations '}';
 
 array_int_declarations
 			: integer_constant array_int_declarations_breakup;
@@ -219,57 +214,57 @@ expression
 			| simple_expression ;
 
 expression_breakup
-			: assignment_operator expression 
-			| addition_assignment_operator expression 
-			| subtraction_assignment_operator expression 
-			| multiplication_assignment_operator expression 
-			| division_assignment_operator expression 
-			| modulo_assignment_operator expression 
-			| increment_operator 
-			| decrement_operator ;
+			: assignment_op expression 
+			| addition_assignment_op expression 
+			| subtraction_assignment_op expression 
+			| multiplication_assignment_op expression 
+			| division_assignment_op expression 
+			| modulo_assignment_op expression 
+			| increment_op 
+			| decrement_op ;
 
 simple_expression 
 			: and_expression simple_expression_breakup;
 
 simple_expression_breakup 
-			: OR_operator and_expression simple_expression_breakup | ;
+			: OR_op and_expression simple_expression_breakup | ;
 
 and_expression 
 			: unary_relation_expression and_expression_breakup;
 
 and_expression_breakup
-			: AND_operator unary_relation_expression and_expression_breakup
+			: AND_op unary_relation_expression and_expression_breakup
 			| ;
 
 unary_relation_expression 
-			: exclamation_operator unary_relation_expression 
+			: exclamation_op unary_relation_expression 
 			| regular_expression ;
 
 regular_expression 
 			: sum_expression regular_expression_breakup;
 
 regular_expression_breakup
-			: relational_operators sum_expression 
+			: relational_ops sum_expression 
 			| ;
 
-relational_operators 
-			: greaterthan_assignment_operator | lessthan_assignment_operator | greaterthan_operator 
-			| lessthan_operator | equality_operator | inequality_operator ;
+relational_ops 
+			: greaterthan_assignment_op | lessthan_assignment_op | greaterthan_op 
+			| lessthan_op | equality_op | inequality_op ;
 
 sum_expression 
-			: sum_expression sum_operators term 
+			: sum_expression sum_ops term 
 			| term ;
 
-sum_operators 
-			: add_operator 
-			| subtract_operator ;
+sum_ops 
+			: add_op 
+			| subtract_op ;
 
 term
 			: term MULOP factor 
 			| factor ;
 
 MULOP 
-			: multiplication_operator | division_operator | modulo_operator ;
+			: multiplication_op | division_op | modulo_op ;
 
 factor 
 			: immutable | mutable ;
@@ -312,26 +307,21 @@ extern int yylineno;
 extern char *yytext;
 void insertSTtype(char *,char *);
 void insertSTvalue(char *, char *);
-void insert(char *, char *, int);
-void printTables();
+void incertCT(char *, char *);
+void printST();
+void printCT();
 
 int main(int argc , char **argv)
 {
 	yyin = fopen(argv[1], "r");
-    printf("Starting the parser\n");
 	yyparse();
 
 	if(flag == 0)
 	{
-		printf(ANSI_COLOR_GREEN "Status: Parsing Successful" ANSI_COLOR_RESET "\n");
-        printf(ANSI_COLOR_GREEN "Status: Printing Symbol Table" ANSI_COLOR_RESET "\n");
-		printf("%30s" ANSI_COLOR_CYAN "SYMBOL TABLE" ANSI_COLOR_RESET "\n", " ");
-		printf("%30s %s\n", " ", "xxxxxxxxxxxxxx");
-		
-        printf(ANSI_COLOR_GREEN "Status: Printing Constant Table" ANSI_COLOR_RESET "\n");
-		printf("\n\n%30s" ANSI_COLOR_CYAN "CONSTANT TABLE" ANSI_COLOR_RESET "\n", " ");
-		printf("%30s %s\n", " ", "xxxxxxxxxxxxxx");
-		printTables();
+		printf("Parsing Successful\n");
+		printST();
+
+		printCT();
 	}
 }
 
@@ -339,7 +329,7 @@ void yyerror(char *s)
 {
 	printf("%d %s %s\n", yylineno, s, yytext);
 	flag=1;
-	printf(ANSI_COLOR_RED "Status: Parsing Failed\n" ANSI_COLOR_RESET);
+	printf("Parsing Failed\n");
 }
 
 void ins()
