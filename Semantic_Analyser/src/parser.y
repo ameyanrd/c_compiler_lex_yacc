@@ -8,31 +8,27 @@
 	void ins();
 	void insV();
 	int flag=0;
-	#define ANSI_COLOR_RED		"\x1b[31m"
-	#define ANSI_COLOR_GREEN	"\x1b[32m"
-	#define ANSI_COLOR_CYAN		"\x1b[36m"
-	#define ANSI_COLOR_RESET	"\x1b[0m"
 	extern char curid[20];
 	extern char curtype[20];
 	extern char curval[20];
 	extern int currnest;
-	void deletedata (int );
-	int checkscope(char*);
-	int check_id_is_func(char *);
+	void deleteData (int );
+	int identifierInScope(char*);
+	int isIdentifierAFunc(char *);
 	void insertST(char*, char*);
-	void insertSTnest(char*, int);
-	void insertSTparamscount(char*, int);
-	int getSTparamscount(char*);
-	int check_duplicate(char*);
-	int check_declaration(char*, char *);
-	int check_params(char*);
-	int duplicate(char *s);
-	int checkarray(char*);
+	void insertIdentifierNestVal(char*, int);
+	void insertFuncArgsCount(char*, int);
+	int getFuncArgsCount(char*);
+	int isFuncRedeclared(char*);
+	int isFuncDeclared(char*, char *);
+	int areFuncArgsNotVoid(char*);
+	int isIdentifierAlreadyDeclared(char *s);
+	int isIdentifierAnArray(char*);
 	char currfunctype[100];
 	char currfunc[100];
 	char currfunccall[100];
 	void insertSTF(char*);
-	char gettype(char*,int);
+	char getFirstCharOfIDDatatype(char*,int);
 	char getfirst(char*);
 	extern int params_count;
 	int call_params_count;
@@ -99,8 +95,8 @@ variable_declaration_list
 			: variable_declaration_list ',' variable_declaration_identifier | variable_declaration_identifier;
 
 variable_declaration_identifier 
-			: identifier {if(duplicate(curid)){printf("Duplicate\n");exit(0);}insertSTnest(curid,currnest); ins();  } vdi   
-			  | array_identifier {if(duplicate(curid)){printf("Duplicate\n");exit(0);}insertSTnest(curid,currnest); ins();  } vdi;
+			: identifier {if(isIdentifierAlreadyDeclared(curid)){printf("Identifier is already declared!\n");exit(0);}insertIdentifierNestVal(curid,currnest); ins();  } vdi   
+			  | array_identifier {if(isIdentifierAlreadyDeclared(curid)){printf("Identifier is already declared!\n");exit(0);}insertIdentifierNestVal(curid,currnest); ins();  } vdi;
 			
 			
 
@@ -143,7 +139,7 @@ function_declaration
 			: function_declaration_type function_declaration_param_statement;
 
 function_declaration_type
-			: type_specifier identifier '('  { strcpy(currfunctype, curtype); strcpy(currfunc, curid); check_duplicate(curid); insertSTF(curid); ins(); };
+			: type_specifier identifier '('  { strcpy(currfunctype, curtype); strcpy(currfunc, curid); isFuncRedeclared(curid); insertSTF(curid); ins(); };
 
 function_declaration_param_statement
 			: params ')' statement;
@@ -152,7 +148,7 @@ params
 			: parameters_list | ;
 
 parameters_list 
-			: type_specifier { check_params(curtype); } parameters_identifier_list { insertSTparamscount(currfunc, params_count); };
+			: type_specifier { areFuncArgsNotVoid(curtype); } parameters_identifier_list { insertFuncArgsCount(currfunc, params_count); };
 
 parameters_identifier_list 
 			: param_identifier parameters_identifier_list_breakup;
@@ -162,7 +158,7 @@ parameters_identifier_list_breakup
 			| ;
 
 param_identifier 
-			: identifier { ins();insertSTnest(curid,1); params_count++; } param_identifier_breakup;
+			: identifier { ins();insertIdentifierNestVal(curid,1); params_count++; } param_identifier_breakup;
 
 param_identifier_breakup
 			: '[' ']'
@@ -175,7 +171,7 @@ statement
 			| variable_declaration;
 
 compound_statement 
-			: {currnest++;} '{'  statment_list  '}' {deletedata(currnest);currnest--;}  ;
+			: {currnest++;} '{'  statment_list  '}' {deleteData(currnest);currnest--;}  ;
 
 statment_list 
 			: statement statment_list 
@@ -312,19 +308,19 @@ factor
 
 mutable 
 			: identifier {
-						  if(check_id_is_func(curid))
+						  if(isIdentifierAFunc(curid))
 						  {printf("Function name used as Identifier\n"); exit(8);}
-			              if(!checkscope(curid))
+			              if(!identifierInScope(curid))
 			              {printf("%s\n",curid);printf("Undeclared\n");exit(0);} 
-			              if(!checkarray(curid))
+			              if(!isIdentifierAnArray(curid))
 			              {printf("%s\n",curid);printf("Array ID has no subscript\n");exit(0);}
-			              if(gettype(curid,0)=='i' || gettype(curid,1)== 'c')
+			              if(getFirstCharOfIDDatatype(curid,0)=='i' || getFirstCharOfIDDatatype(curid,1)== 'c')
 			              $$ = 1;
 			              else
 			              $$ = -1;
 			              }
-			| array_identifier {if(!checkscope(curid)){printf("%s\n",curid);printf("Undeclared\n");exit(0);}} '[' expression ']' 
-			                   {if(gettype(curid,0)=='i' || gettype(curid,1)== 'c')
+			| array_identifier {if(!identifierInScope(curid)){printf("%s\n",curid);printf("Undeclared\n");exit(0);}} '[' expression ']' 
+			                   {if(getFirstCharOfIDDatatype(curid,0)=='i' || getFirstCharOfIDDatatype(curid,1)== 'c')
 			              		$$ = 1;
 			              		else
 			              		$$ = -1;
@@ -337,14 +333,14 @@ immutable
 
 call
 			: identifier '('{
-			             if(!check_declaration(curid, "Function"))
+			             if(!isFuncDeclared(curid, "Function"))
 			             { printf("Function not declared"); exit(0);} 
 			             insertSTF(curid); 
 						 strcpy(currfunccall,curid);
 			             } arguments ')' 
 						 { if(strcmp(currfunccall,"printf"))
 							{ 
-								if(getSTparamscount(currfunccall)!=call_params_count)
+								if(getFuncArgsCount(currfunccall)!=call_params_count)
 								{	
 									yyerror("Number of arguments in function call doesn't match number of parameters");
 									//printf("Number of arguments in function call %s doesn't match number of parameters\n", currfunccall);
@@ -387,12 +383,12 @@ int main(int argc , char **argv)
 
 	if(flag == 0)
 	{
-		printf(ANSI_COLOR_GREEN "Status: Parsing Complete - Valid" ANSI_COLOR_RESET "\n");
-		printf("%30s" ANSI_COLOR_CYAN "SYMBOL TABLE" ANSI_COLOR_RESET "\n", " ");
+		printf("Status: Parsing Complete - Valid\n");
+		printf("%30sSYMBOL TABLE\n", " ");
 		printf("%30s %s\n", " ", "------------");
 		printST();
 
-		printf("\n\n%30s" ANSI_COLOR_CYAN "CONSTANT TABLE" ANSI_COLOR_RESET "\n", " ");
+		printf("\n\n%30sCONSTANT TABLE\n", " ");
 		printf("%30s %s\n", " ", "--------------");
 		printCT();
 	}
@@ -400,9 +396,9 @@ int main(int argc , char **argv)
 
 void yyerror(char *s)
 {
-	printf(ANSI_COLOR_RED "%d %s %s\n", yylineno, s, yytext);
+	printf("%d %s %s\n", yylineno, s, yytext);
 	flag=1;
-	printf(ANSI_COLOR_RED "Status: Parsing Failed - Invalid\n" ANSI_COLOR_RESET);
+	printf("Status: Parsing Failed - Invalid\n");
 	exit(7);
 }
 

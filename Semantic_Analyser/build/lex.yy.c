@@ -684,451 +684,335 @@ int yy_flex_debug = 0;
 char *yytext;
 #line 1 "../src/scanner.l"
 #line 2 "../src/scanner.l"
-	#include <stdio.h>
-	#include <string.h>
-	#include "y.tab.h"
+#include <stdio.h>
+#include <string.h>
+#include "y.tab.h"
 
-	#define ANSI_COLOR_RED		"\x1b[31m"
-	#define ANSI_COLOR_GREEN	"\x1b[32m"
-	#define ANSI_COLOR_YELLOW	"\x1b[33m"
-	#define ANSI_COLOR_BLUE		"\x1b[34m"
-	#define ANSI_COLOR_MAGENTA	"\x1b[35m"
-	#define ANSI_COLOR_CYAN		"\x1b[36m"
-	#define ANSI_COLOR_RESET	"\x1b[0m"
+    struct symboltable {
+        char name[100];
+        char class[100];
+        char type[100];
+        char value[100];
+        int nestval;
+        int lineno;
+        int length;
+        int params_count;
+    } ST[1001];
 
-	struct symboltable
-	{
-		char name[100];
-		char class[100];
-		char type[100];
-		char value[100];
-		int nestval;
-		int lineno;
-		int length;
-		int params_count;
-	}ST[1001];
+    struct constanttable {
+        char name[100];
+        char type[100];
+        int length;
+    } CT[1001];
 
-	struct constanttable
-	{
-		char name[100];
-		char type[100];
-		int length;
-	}CT[1001];
+    int currnest = 0;
+    int params_count = 0;
+    extern int yylval;
 
-	int currnest = 0;
-	int params_count = 0;
-	extern int yylval;
-
-	int hash(char *str)
-	{
-		int value = 0;
-		for(int i = 0 ; i < strlen(str) ; i++)
-		{
-			value = 10*value + (str[i] - 'A');
-			value = value % 1001;
-			while(value < 0)
-				value = value + 1001;
-		}
-		return value;
-	}
-
-	int lookupST(char *str)
-	{
-		int value = hash(str);
-		if(ST[value].length == 0)
-		{
-			return 0;
-		}
-		else if(strcmp(ST[value].name,str)==0)
-		{
-			
-			return value;
-		}
-		else
-		{
-			for(int i = value + 1 ; i!=value ; i = (i+1)%1001)
-			{
-				if(strcmp(ST[i].name,str)==0)
-				{
-					
-					return i;
-				}
-			}
-			return 0;
-		}
-	}
-
-	int lookupCT(char *str)
-	{
-		int value = hash(str);
-		if(CT[value].length == 0)
-			return 0;
-		else if(strcmp(CT[value].name,str)==0)
-			return 1;
-		else
-		{
-			for(int i = value + 1 ; i!=value ; i = (i+1)%1001)
-			{
-				if(strcmp(CT[i].name,str)==0)
-				{
-					return 1;
-				}
-			}
-			return 0;
-		}
-	}
-
-	void insertSTline(char *str1, int line)
-	{
-		for(int i = 0 ; i < 1001 ; i++)
-		{
-			if(strcmp(ST[i].name,str1)==0)
-			{
-				ST[i].lineno = line;
-			}
-		}
-	}
-
-
-	void insertST(char *str1, char *str2)
-	{
-		if(lookupST(str1))
-		{
-			if(strcmp(ST[lookupST(str1)].class,"Identifier")==0 && strcmp(str2,"Array Identifier")==0)
-			{
-				printf("Error use of array\n");
-				exit(0);
-			}	
-			return;
-		}
-		else
-		{
-			int value = hash(str1);
-			if(ST[value].length == 0)
-			{
-				strcpy(ST[value].name,str1);
-				strcpy(ST[value].class,str2);
-				ST[value].length = strlen(str1);
-				ST[value].nestval = 9999;
-				ST[value].params_count = -1;
-				insertSTline(str1,yylineno);
-				return;
-			}
-
-			int pos = 0;
-
-			for (int i = value + 1 ; i!=value ; i = (i+1)%1001)
-			{
-				if(ST[i].length == 0)
-				{
-					pos = i;
-					break;
-				}
-			}
-
-			strcpy(ST[pos].name,str1);
-			strcpy(ST[pos].class,str2);
-			ST[pos].length = strlen(str1);
-			ST[pos].nestval = 9999;
-			ST[pos].params_count = -1;
-		}
-	}
-
-	void insertSTtype(char *str1, char *str2)
-	{
-		for(int i = 0 ; i < 1001 ; i++)
-		{
-			if(strcmp(ST[i].name,str1)==0)
-			{
-				strcpy(ST[i].type,str2);
-			}
-		}
+    int hash(char *str) {
+        int value = 0;
+        for(int i = 0 ; i < strlen(str) ; i++) {
+            value = 10*value + (str[i] - 'A');
+            value = value % 1001;
+            while(value < 0)
+                value = value + 1001;
+        }
+        return value;
     }
 
-	void insertSTvalue(char *str1, char *str2)
-	{
-		for(int i = 0 ; i < 1001 ; i++)
-		{
-			if(strcmp(ST[i].name,str1)==0 && ST[i].nestval == currnest)
-			{
-				strcpy(ST[i].value,str2);
-			}
-		}
-	}
+    int lookupST(char *str) {
+        int value = hash(str);
+        if(ST[value].length == 0) return 0;
+        else if(strcmp(ST[value].name,str)==0) return value;
+        else {
+            for(int i = value + 1 ; i!=value ; i = (i+1)%1001) {
+                if(strcmp(ST[i].name,str)==0) return i;
+            }
+            return 0;
+        }
+    }
 
+    int lookupCT(char *str) {
+        int value = hash(str);
+        if(CT[value].length == 0) return 0;
+        else if(strcmp(CT[value].name,str)==0) return 1;
+        else {
+            for(int i = value + 1 ; i!=value ; i = (i+1)%1001) {
+                if(strcmp(CT[i].name,str)==0)
+                    return 1;
+            }
+            return 0;
+        }
+    }
 
-	void insertSTnest(char *s, int nest)
-	{
-		if(lookupST(s) && ST[lookupST(s)].nestval != 9999)
-		{
-             int pos = 0;
-             int value = hash(s);
-			for (int i = value + 1 ; i!=value ; i = (i+1)%1001)
-			{
-				if(ST[i].length == 0)
-				{
-					pos = i;
-					break;
-				}
-			}
-
-			strcpy(ST[pos].name,s);
-			strcpy(ST[pos].class,"Identifier");
-			ST[pos].length = strlen(s);
-			ST[pos].nestval = nest;
-			ST[pos].params_count = -1;
-			ST[pos].lineno = yylineno;
-		}
-		else
-		{
-			for(int i = 0 ; i < 1001 ; i++)
-			{
-				if(strcmp(ST[i].name,s)==0 )
-				{
-					ST[i].nestval = nest;
-				}
-			}
-		}
-	}
-
-	void insertSTparamscount(char *s, int count)
-	{
-		for(int i = 0 ; i < 1001 ; i++)
-		{
-			if(strcmp(ST[i].name,s)==0 )
-			{
-				ST[i].params_count = count;
-			}
-		}
-	}
-
-	int getSTparamscount(char *s)
-	{
-		for(int i = 0 ; i < 1001 ; i++)
-		{
-			if(strcmp(ST[i].name,s)==0 )
-			{
-				return ST[i].params_count;
-			}
-		}
-		return -2;
-	}
-
-	void insertSTF(char *s)
-	{
-		for(int i = 0 ; i < 1001 ; i++)
-		{
-			if(strcmp(ST[i].name,s)==0 )
-			{
-				strcpy(ST[i].class,"Function");
-				return;
-			}
-		}
-
-	}
-
-	void insertCT(char *str1, char *str2)
-	{
-		if(lookupCT(str1))
-			return;
-		else
-		{
-			int value = hash(str1);
-			if(CT[value].length == 0)
-			{
-				strcpy(CT[value].name,str1);
-				strcpy(CT[value].type,str2);
-				CT[value].length = strlen(str1);
-				return;
-			}
-
-			int pos = 0;
-
-			for (int i = value + 1 ; i!=value ; i = (i+1)%1001)
-			{
-				if(CT[i].length == 0)
-				{
-					pos = i;
-					break;
-				}
-			}
-
-			strcpy(CT[pos].name,str1);
-			strcpy(CT[pos].type,str2);
-			CT[pos].length = strlen(str1);
-		}
-	}
-
-	void deletedata (int nesting)
-	{
-		for(int i = 0 ; i < 1001 ; i++)
-		{
-			if(ST[i].nestval == nesting)
-			{
-				ST[i].nestval = 99999;
-			}
-		}
-
-
-	}
-
-	int checkscope(char *s)
-	{
-		int flag = 0;
-		for(int i = 0 ; i < 1000 ; i++)
-		{
-			if(strcmp(ST[i].name,s)==0)
-			{
-				if(ST[i].nestval > currnest)
-				{
-					flag = 1;
-				}
-				else
-				{
-					flag = 0;
-					break;
-				}
-			}
-		}
-		if(!flag)
-		{
-			return 1;
-		}
-		else
-		{
-			return 0;
-		}
-	}
-
-	int check_id_is_func(char *s)
-	{
-		for(int i = 0 ; i < 1000 ; i++)
-		{
-			if(strcmp(ST[i].name,s)==0)
-			{
-				if(strcmp(ST[i].class,"Function")==0)
-					return 1;
-			}
-		}
-		return 0;
-	}
-
-	int checkarray(char *s)
-	{
-		for(int i = 0 ; i < 1000 ; i++)
-		{
-			if(strcmp(ST[i].name,s)==0)
-			{
-				if(strcmp(ST[i].class,"Array Identifier")==0)
-				{
-					return 0;
-				}
-			}
-		}
-		return 1;
-	}
-
-	int duplicate(char *s)
-	{
-		for(int i = 0 ; i < 1000 ; i++)
-		{
-			if(strcmp(ST[i].name,s)==0)
-			{				
-				if(ST[i].nestval == currnest)
-				{
-			        return 1;
-				}
-			}
-		}
-		
-		return 0;
-	}
-
-	int check_duplicate(char* str)
-	{
-		for(int i=0; i<1001; i++)
-		{
-			if(strcmp(ST[i].name, str) == 0 && strcmp(ST[i].class, "Function") == 0)
-			{
-				printf("Function redeclaration not allowed\n");
-				exit(0);
-			}
-		}
-	}
-
-	int check_declaration(char* str, char *check_type)
-	{
-		for(int i=0; i<1001; i++)
-		{
-			if(strcmp(ST[i].name, str) == 0 && strcmp(ST[i].class, "Function") == 0 || strcmp(ST[i].name,"printf")==0 )
-			{
-				return 1;
-			}
-		}
-		return 0;
-	}
-
-	int check_params(char* type_specifier)
-	{
-		if(!strcmp(type_specifier, "void"))
-		{
-			printf("Parameters cannot be of type void\n");
-			exit(0);
-		}
-		return 0;
-	}
-
-	char gettype(char *s, int flag)
-	{
-			for(int i = 0 ; i < 1001 ; i++ )
-			{
-				if(strcmp(ST[i].name,s)==0)
-				{
-					return ST[i].type[0];
-				}
-			}
-		
-	}
-
-	void printST()
-	{
-		printf("%10s | %15s | %10s | %10s | %10s | %15s | %10s |\n","SYMBOL", "CLASS", "TYPE","VALUE", "LINE NO", "NESTING", "PARAMS COUNT");
-		for(int i=0;i<100;i++) {
-			printf("-");
-		}
-		printf("\n");
-		for(int i = 0 ; i < 1001 ; i++)
-		{
-			if(ST[i].length == 0)
-			{
-				continue;
-			}
-			printf("%10s | %15s | %10s | %10s | %10d | %15d | %10d |\n",ST[i].name, ST[i].class, ST[i].type, ST[i].value, ST[i].lineno, ST[i].nestval, ST[i].params_count);
-		}
+    void insertSTline(char *str1, int line) {
+        for(int i = 0 ; i < 1001 ; i++) {
+            if(strcmp(ST[i].name,str1)==0) ST[i].lineno = line;
+        }
     }
 
 
-	void printCT()
-	{
-		printf("%10s | %15s\n","NAME", "TYPE");
-		for(int i=0;i<81;i++) {
-			printf("-");
-		}
-		printf("\n");
-		for(int i = 0 ; i < 1001 ; i++)
-		{
-			if(CT[i].length == 0)
-				continue;
+    void insertST(char *str1, char *str2) {
+        if(lookupST(str1)) {
+            if(strcmp(ST[lookupST(str1)].class,"Identifier")==0 && strcmp(str2,"Array Identifier")==0) {
+                printf("Error use of array\n");
+                exit(0);
+            }	
+            return;
+        }
+        else {
+            int value = hash(str1);
+            if(ST[value].length == 0) {
+                strcpy(ST[value].name,str1);
+                strcpy(ST[value].class,str2);
+                ST[value].length = strlen(str1);
+                ST[value].nestval = 9999;
+                ST[value].params_count = -1;
+                insertSTline(str1,yylineno);
+                return;
+            }
 
-			printf("%10s | %15s\n",CT[i].name, CT[i].type);
-		}
-	}
-	char curid[20];
-	char curtype[20];
-	char curval[20];
+            int pos = 0;
 
-#line 1131 "lex.yy.c"
-#line 1132 "lex.yy.c"
+            for (int i = value + 1 ; i!=value ; i = (i+1)%1001) {
+                if(ST[i].length == 0) {
+                    pos = i;
+                    break;
+                }
+            }
+
+            strcpy(ST[pos].name,str1);
+            strcpy(ST[pos].class,str2);
+            ST[pos].length = strlen(str1);
+            ST[pos].nestval = 9999;
+            ST[pos].params_count = -1;
+        }
+    }
+
+    void insertSTtype(char *str1, char *str2) {
+        for(int i = 0 ; i < 1001 ; i++) {
+            if(strcmp(ST[i].name,str1)==0) strcpy(ST[i].type,str2);
+        }
+    }
+
+    void insertSTvalue(char *str1, char *str2) {
+        for(int i = 0 ; i < 1001 ; i++) {
+            if(strcmp(ST[i].name,str1)==0 && ST[i].nestval == currnest) strcpy(ST[i].value,str2);
+        }
+    }
+
+
+    void insertIdentifierNestVal(char *s, int nest) {
+        if(lookupST(s) && ST[lookupST(s)].nestval != 9999) {
+            int pos = 0;
+            int value = hash(s);
+            for (int i = value + 1 ; i!=value ; i = (i+1)%1001) {
+                if(ST[i].length == 0){
+                    pos = i;
+                    break;
+                }
+            }
+
+            strcpy(ST[pos].name,s);
+            strcpy(ST[pos].class,"Identifier");
+            ST[pos].length = strlen(s);
+            ST[pos].nestval = nest;
+            ST[pos].params_count = -1;
+            ST[pos].lineno = yylineno;
+        }
+        else {
+            for(int i = 0 ; i < 1001 ; i++)
+                if(strcmp(ST[i].name,s)==0 ) ST[i].nestval = nest;
+        }
+    }
+
+    void insertFuncArgsCount(char *s, int count) {
+        for(int i = 0 ; i < 1001 ; i++)
+            if(strcmp(ST[i].name,s)==0 ) ST[i].params_count = count;
+    }
+
+    int getFuncArgsCount(char *s) {
+        for(int i = 0 ; i < 1001 ; i++)
+            if(strcmp(ST[i].name,s)==0)
+                return ST[i].params_count;
+        return -2;
+    }
+
+    void insertSTF(char *s) {
+        for(int i = 0 ; i < 1001 ; i++) {
+            if(strcmp(ST[i].name,s)==0 ) {
+                strcpy(ST[i].class,"Function");
+                return;
+            }
+        }
+
+    }
+
+    void insertCT(char *str1, char *str2) {
+        if(lookupCT(str1)) return;
+        else {
+            int value = hash(str1);
+            if(CT[value].length == 0) {
+                strcpy(CT[value].name,str1);
+                strcpy(CT[value].type,str2);
+                CT[value].length = strlen(str1);
+                return;
+            }
+            int pos = 0;
+            for (int i = value + 1 ; i!=value ; i = (i+1)%1001) {
+                if(CT[i].length == 0) {
+                    pos = i;
+                    break;
+                }
+            }
+
+            strcpy(CT[pos].name,str1);
+            strcpy(CT[pos].type,str2);
+            CT[pos].length = strlen(str1);
+        }
+    }
+
+    void deleteData (int nesting) {
+        for(int i = 0 ; i < 1001 ; i++)
+            if(ST[i].nestval == nesting) ST[i].nestval = 99999;
+    }
+
+    int identifierInScope(char *s) {
+        int flag = 0;
+        for(int i = 0 ; i < 1000 ; i++) {
+            if(strcmp(ST[i].name,s)==0){
+                if(ST[i].nestval > currnest) flag = 1;
+                else {
+                    flag = 0;
+                    break;
+                }
+            }
+        }
+        if(!flag) return 1;
+        else return 0;
+    }
+
+    int isIdentifierAFunc(char *s) {
+        for(int i = 0 ; i < 1000 ; i++) {
+            if(strcmp(ST[i].name,s)==0)
+                if(strcmp(ST[i].class,"Function")==0) return 1;
+        }
+        return 0;
+    }
+
+    int isIdentifierAnArray(char *s) {
+        for(int i = 0 ; i < 1000 ; i++) {
+            if(strcmp(ST[i].name,s)==0)
+                if(strcmp(ST[i].class,"Array Identifier")==0) return 0;
+        }
+        return 1;
+    }
+
+    int isIdentifierAlreadyDeclared(char *s)
+    {
+        for(int i = 0 ; i < 1000 ; i++)
+        {
+            if(strcmp(ST[i].name,s)==0)
+            {				
+                if(ST[i].nestval == currnest)
+                {
+                    return 1;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    int isFuncRedeclared(char* str)
+    {
+        for(int i=0; i<1001; i++)
+        {
+            if(strcmp(ST[i].name, str) == 0 && strcmp(ST[i].class, "Function") == 0)
+            {
+                printf("Function redeclaration not allowed\n");
+                exit(0);
+            }
+        }
+    }
+
+    int isFuncDeclared(char* str, char *check_type)
+    {
+        for(int i=0; i<1001; i++)
+        {
+            if(strcmp(ST[i].name, str) == 0 && strcmp(ST[i].class, "Function") == 0 || strcmp(ST[i].name,"printf")==0 )
+            {
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    int areFuncArgsNotVoid(char* type_specifier)
+    {
+        if(!strcmp(type_specifier, "void"))
+        {
+            printf("Parameters cannot be of type void\n");
+            exit(0);
+        }
+        return 0;
+    }
+
+    char getFirstCharOfIDDatatype(char *s, int flag)
+    {
+        for(int i = 0 ; i < 1001 ; i++ )
+        {
+            if(strcmp(ST[i].name,s)==0)
+            {
+                return ST[i].type[0];
+            }
+        }
+
+    }
+
+    void printST()
+    {
+        printf("%10s | %15s | %10s | %10s | %10s | %10s |\n","Symbol", "Class", "Type","Value", "Line no.", "Arg count");
+        for(int i=0;i<100;i++) {
+            printf("-");
+        }
+        printf("\n");
+        for(int i = 0 ; i < 1001 ; i++)
+        {
+            if(ST[i].length == 0)
+            {
+                continue;
+            }
+            if (ST[i].params_count > 0) {
+                printf("%10s | %15s | %10s | %10s | %10d | %10d |\n",ST[i].name, ST[i].class, ST[i].type, ST[i].value, ST[i].lineno, ST[i].params_count);
+            } else {
+                printf("%10s | %15s | %10s | %10s | %10d | \t\t |\n",ST[i].name, ST[i].class, ST[i].type, ST[i].value, ST[i].lineno);
+            }
+        }
+    }
+
+
+    void printCT()
+    {
+        printf("%10s | %15s\n","Name", "Type");
+        for(int i=0;i<81;i++) {
+            printf("-");
+        }
+        printf("\n");
+        for(int i = 0 ; i < 1001 ; i++)
+        {
+            if(CT[i].length == 0)
+                continue;
+
+            printf("%10s | %15s\n",CT[i].name, CT[i].type);
+        }
+    }
+    char curid[20];
+    char curtype[20];
+    char curval[20];
+
+#line 1015 "lex.yy.c"
+#line 1016 "lex.yy.c"
 
 #define INITIAL 0
 
@@ -1345,9 +1229,9 @@ YY_DECL
 		}
 
 	{
-#line 450 "../src/scanner.l"
+#line 334 "../src/scanner.l"
 
-#line 1351 "lex.yy.c"
+#line 1235 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1407,7 +1291,7 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 451 "../src/scanner.l"
+#line 335 "../src/scanner.l"
 {yylineno++;}
 	YY_BREAK
 case 2:
@@ -1417,7 +1301,7 @@ YY_LINENO_REWIND_TO(yy_cp - 1);
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 452 "../src/scanner.l"
+#line 336 "../src/scanner.l"
 { }
 	YY_BREAK
 case 3:
@@ -1427,329 +1311,329 @@ YY_LINENO_REWIND_TO(yy_cp - 1);
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 453 "../src/scanner.l"
+#line 337 "../src/scanner.l"
 { } 
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 454 "../src/scanner.l"
+#line 338 "../src/scanner.l"
 { }
 	YY_BREAK
 case 5:
 /* rule 5 can match eol */
 YY_RULE_SETUP
-#line 455 "../src/scanner.l"
+#line 339 "../src/scanner.l"
 { }
 	YY_BREAK
 case 6:
 /* rule 6 can match eol */
 YY_RULE_SETUP
-#line 456 "../src/scanner.l"
+#line 340 "../src/scanner.l"
 ;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 457 "../src/scanner.l"
+#line 341 "../src/scanner.l"
 { return(';'); }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 458 "../src/scanner.l"
+#line 342 "../src/scanner.l"
 { return(','); }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 459 "../src/scanner.l"
+#line 343 "../src/scanner.l"
 { return('{'); }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 460 "../src/scanner.l"
+#line 344 "../src/scanner.l"
 { return('}'); }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 461 "../src/scanner.l"
+#line 345 "../src/scanner.l"
 { return('('); }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 462 "../src/scanner.l"
+#line 346 "../src/scanner.l"
 { return(')'); }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 463 "../src/scanner.l"
+#line 347 "../src/scanner.l"
 { return('['); }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 464 "../src/scanner.l"
+#line 348 "../src/scanner.l"
 { return(']'); }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 465 "../src/scanner.l"
+#line 349 "../src/scanner.l"
 { return(':'); }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 466 "../src/scanner.l"
+#line 350 "../src/scanner.l"
 { return('.'); }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 468 "../src/scanner.l"
+#line 352 "../src/scanner.l"
 { strcpy(curtype,yytext); insertST(yytext, "Keyword");return CHAR;}
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 469 "../src/scanner.l"
+#line 353 "../src/scanner.l"
 { strcpy(curtype,yytext); insertST(yytext, "Keyword"); return DOUBLE;}
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 470 "../src/scanner.l"
+#line 354 "../src/scanner.l"
 { insertST(yytext, "Keyword"); return ELSE;}
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 471 "../src/scanner.l"
+#line 355 "../src/scanner.l"
 { strcpy(curtype,yytext); insertST(yytext, "Keyword"); return FLOAT;}
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 472 "../src/scanner.l"
+#line 356 "../src/scanner.l"
 { insertST(yytext, "Keyword"); return WHILE;}
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 473 "../src/scanner.l"
+#line 357 "../src/scanner.l"
 { insertST(yytext, "Keyword"); return DO;}
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 474 "../src/scanner.l"
+#line 358 "../src/scanner.l"
 { insertST(yytext, "Keyword"); return FOR;}
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 475 "../src/scanner.l"
+#line 359 "../src/scanner.l"
 { insertST(yytext, "Keyword"); return IF;}
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 476 "../src/scanner.l"
+#line 360 "../src/scanner.l"
 { strcpy(curtype,yytext); insertST(yytext, "Keyword"); return INT;}
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 477 "../src/scanner.l"
+#line 361 "../src/scanner.l"
 { strcpy(curtype,yytext); insertST(yytext, "Keyword"); return LONG;}
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 478 "../src/scanner.l"
+#line 362 "../src/scanner.l"
 { insertST(yytext, "Keyword"); return RETURN;}
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 479 "../src/scanner.l"
+#line 363 "../src/scanner.l"
 { strcpy(curtype,yytext); insertST(yytext, "Keyword"); return SHORT;}
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 480 "../src/scanner.l"
+#line 364 "../src/scanner.l"
 { strcpy(curtype,yytext); insertST(yytext, "Keyword"); return SIGNED;}
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 481 "../src/scanner.l"
+#line 365 "../src/scanner.l"
 { insertST(yytext, "Keyword"); return SIZEOF;}
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 482 "../src/scanner.l"
+#line 366 "../src/scanner.l"
 { strcpy(curtype,yytext);   insertST(yytext, "Keyword");  return STRUCT;}
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 483 "../src/scanner.l"
+#line 367 "../src/scanner.l"
 { insertST(yytext, "Keyword");   return UNSIGNED;}
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 484 "../src/scanner.l"
+#line 368 "../src/scanner.l"
 { strcpy(curtype,yytext);   insertST(yytext, "Keyword");  return VOID;}
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 485 "../src/scanner.l"
+#line 369 "../src/scanner.l"
 { insertST(yytext, "Keyword");  return BREAK;}
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 489 "../src/scanner.l"
+#line 373 "../src/scanner.l"
 { return increment_operator; }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 490 "../src/scanner.l"
+#line 374 "../src/scanner.l"
 { return decrement_operator; }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 491 "../src/scanner.l"
+#line 375 "../src/scanner.l"
 { return leftshift_operator; }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 492 "../src/scanner.l"
+#line 376 "../src/scanner.l"
 { return rightshift_operator; }
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 493 "../src/scanner.l"
+#line 377 "../src/scanner.l"
 { return lessthan_assignment_operator; }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 494 "../src/scanner.l"
+#line 378 "../src/scanner.l"
 { return lessthan_operator; }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 495 "../src/scanner.l"
+#line 379 "../src/scanner.l"
 { return greaterthan_assignment_operator; }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 496 "../src/scanner.l"
+#line 380 "../src/scanner.l"
 { return greaterthan_operator; }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 497 "../src/scanner.l"
+#line 381 "../src/scanner.l"
 { return equality_operator; }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 498 "../src/scanner.l"
+#line 382 "../src/scanner.l"
 { return inequality_operator; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 499 "../src/scanner.l"
+#line 383 "../src/scanner.l"
 { return AND_operator; }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 500 "../src/scanner.l"
+#line 384 "../src/scanner.l"
 { return OR_operator; }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 501 "../src/scanner.l"
+#line 385 "../src/scanner.l"
 { return caret_operator; }
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 502 "../src/scanner.l"
+#line 386 "../src/scanner.l"
 { return multiplication_assignment_operator; }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 503 "../src/scanner.l"
+#line 387 "../src/scanner.l"
 { return division_assignment_operator; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 504 "../src/scanner.l"
+#line 388 "../src/scanner.l"
 { return modulo_assignment_operator; }
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 505 "../src/scanner.l"
+#line 389 "../src/scanner.l"
 { return addition_assignment_operator; }
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 506 "../src/scanner.l"
+#line 390 "../src/scanner.l"
 { return subtraction_assignment_operator; }
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 507 "../src/scanner.l"
+#line 391 "../src/scanner.l"
 { return leftshift_assignment_operator; }
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 508 "../src/scanner.l"
+#line 392 "../src/scanner.l"
 { return rightshift_assignment_operator; }
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 509 "../src/scanner.l"
+#line 393 "../src/scanner.l"
 { return AND_assignment_operator; }
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 510 "../src/scanner.l"
+#line 394 "../src/scanner.l"
 { return XOR_assignment_operator; }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 511 "../src/scanner.l"
+#line 395 "../src/scanner.l"
 { return OR_assignment_operator; }
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 512 "../src/scanner.l"
+#line 396 "../src/scanner.l"
 { return amp_operator; }
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 513 "../src/scanner.l"
+#line 397 "../src/scanner.l"
 { return exclamation_operator; }
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 514 "../src/scanner.l"
+#line 398 "../src/scanner.l"
 { return tilde_operator; }
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 515 "../src/scanner.l"
+#line 399 "../src/scanner.l"
 { return subtract_operator; }
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 516 "../src/scanner.l"
+#line 400 "../src/scanner.l"
 { return add_operator; }
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 517 "../src/scanner.l"
+#line 401 "../src/scanner.l"
 { return multiplication_operator; }
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 518 "../src/scanner.l"
+#line 402 "../src/scanner.l"
 { return division_operator; }
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 519 "../src/scanner.l"
+#line 403 "../src/scanner.l"
 { return modulo_operator; }
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 520 "../src/scanner.l"
+#line 404 "../src/scanner.l"
 { return pipe_operator; }
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 521 "../src/scanner.l"
+#line 405 "../src/scanner.l"
 { return assignment_operator;}
 	YY_BREAK
 case 68:
@@ -1757,7 +1641,7 @@ case 68:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 523 "../src/scanner.l"
+#line 407 "../src/scanner.l"
 {strcpy(curval,yytext); insertCT(yytext,"String Constant"); return string_constant;}
 	YY_BREAK
 case 69:
@@ -1765,7 +1649,7 @@ case 69:
 (yy_c_buf_p) = yy_cp = yy_bp + 3;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 524 "../src/scanner.l"
+#line 408 "../src/scanner.l"
 {strcpy(curval,yytext); insertCT(yytext,"Character Constant"); return character_constant;}
 	YY_BREAK
 case 70:
@@ -1773,7 +1657,7 @@ case 70:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 525 "../src/scanner.l"
+#line 409 "../src/scanner.l"
 {strcpy(curid,yytext); insertST(yytext, "Array Identifier");  return array_identifier;}
 	YY_BREAK
 case 71:
@@ -1783,7 +1667,7 @@ YY_LINENO_REWIND_TO(yy_cp - 1);
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 526 "../src/scanner.l"
+#line 410 "../src/scanner.l"
 {strcpy(curval,yytext); insertCT(yytext, "Number Constant"); yylval = atoi(yytext); return integer_constant;}
 	YY_BREAK
 case 72:
@@ -1793,17 +1677,17 @@ YY_LINENO_REWIND_TO(yy_cp - 1);
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 527 "../src/scanner.l"
+#line 411 "../src/scanner.l"
 {strcpy(curval,yytext); insertCT(yytext, "Floating Constant"); return float_constant;}
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 528 "../src/scanner.l"
+#line 412 "../src/scanner.l"
 {strcpy(curid,yytext); insertST(curid,"Identifier"); return identifier;}
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 530 "../src/scanner.l"
+#line 414 "../src/scanner.l"
 {
 		if(yytext[0]=='#')
 		{
@@ -1827,10 +1711,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 551 "../src/scanner.l"
+#line 435 "../src/scanner.l"
 ECHO;
 	YY_BREAK
-#line 1834 "lex.yy.c"
+#line 1718 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2835,6 +2719,6 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 551 "../src/scanner.l"
+#line 435 "../src/scanner.l"
 
 
