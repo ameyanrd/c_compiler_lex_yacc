@@ -319,7 +319,7 @@ expression
 			                                                          codeassign();
 																	}
 			| mutable increment_operator 							{ push("++");if($1 == 1) $$=1; else $$=-1; genunary();}
-			| mutable decrement_operator  							{push("--");if($1 == 1) $$=1; else $$=-1;}
+			| mutable decrement_operator  							{ push("--");if($1 == 1) $$=1; else $$=-1; genunary();}
 			| simple_expression {if($1 == 1) $$=1; else $$=-1;} ;
 
 
@@ -507,8 +507,12 @@ char* itoa(int num, char* str, int base)
     reverse(str, i); 
   
     return str; 
-} 
+}
 
+/* 
+ * Generate code for expressions like y op z
+ * Create temporary variable tCount, reduce y op z into tCount, display tCount = y op z
+ */
 void codegen()
 {
 	strcpy(temp,"t");
@@ -532,13 +536,17 @@ void codegendoubleop()
 	count++;
 }
 
+/*
+ * Generate code for constant values
+ * Create temporary variable tCount, put constant value into tCount, display tCount = constant value
+ */
 void codegencon()
 {
 	strcpy(temp,"t");
 	char buffer[100];
 	itoa(count,buffer,10);
 	strcat(temp,buffer);
-	printf("%s = %s\n",temp,curval);
+	printf("%s = %s\n",temp,curval);	// curval has a constant in it from yytext
 	push(temp);
 	count++;
 }
@@ -552,6 +560,10 @@ int isunary(char *s)
 	return 0;
 }
 
+/*
+ * Generate code for unary operators.
+ * x-- becomes tCount = x - 1, x = tCount
+ */
 void genunary()
 {
 	char temp1[100], temp2[100], temp3[100];
@@ -585,12 +597,21 @@ void genunary()
 	top = top -2;
 }
 
+/*
+ * Generate code for assigning s[top] (a temporary containing final value) to s[top-2] (the target variable)
+ * For x = 2, 2 will be in some temporary tCount, which will be at s[top], x will be s[top-2], = will be at s[top-1]
+ * For x += 2, we will have called codegendoubleop() already, which will result in x+2 in tCount at s[top], x at s[top-2], and + at s[top-1]
+ */
 void codeassign()
 {
 	printf("%s = %s\n",s[top-2].value,s[top].value);
 	top = top - 2;
 }
 
+/*
+ * Create (not print) a label for jumping to, when the if or loop condition is false
+ * Also generate code for the same
+ */
 void label1()
 {
 	strcpy(temp,"L");
@@ -601,23 +622,42 @@ void label1()
 	label[++ltop].labelvalue = lno++;
 }
 
+/*
+ * Create label for jumping to end of else, after completing the if.
+ * Print the label for beginning of else.
+ */
 void label2()
 {
+	// Create new label for jumping directly to the end of else, after completing the if. We will put it into the stack soon
+	// Also generate code i.e. goto L lno
 	strcpy(temp,"L");
 	char buffer[100];
 	itoa(lno,buffer,10);
 	strcat(temp,buffer);
 	printf("GoTo %s\n",temp);
+
+	// At the beginning of if, we had put the label for jumping to, if the if condition was false, on the stack.
+	// This was done in label1()
+	// Now we must generate code for (i.e. print) that label, and remove it from the label stack.
 	strcpy(temp,"L");
 	itoa(label[ltop].labelvalue,buffer,10);
 	strcat(temp,buffer);
 	printf("%s:\n",temp);
 	ltop--;
+
+	// Put the newly created label on the stack
 	label[++ltop].labelvalue=lno++;
 }
 
+/*
+ * Print the label for jumping to the end of the if-else construct
+ * This label was kept on the stack in label2()
+ */
 void label3()
 {
+	// In label2(), we had generated a label for jumping directly to the end of else, after completing the if.
+	// We had put it into the stack
+	// We will now generate code for (i.e. print) that label, and remove it from the label stack
 	strcpy(temp,"L");
 	char buffer[100];
 	itoa(label[ltop].labelvalue,buffer,10);
@@ -627,6 +667,10 @@ void label3()
 	
 }
 
+/*
+ * Create label for starting of loop
+ * Print it, and put it on stack.
+ */
 void label4()
 {
 	strcpy(temp,"L");
@@ -637,18 +681,28 @@ void label4()
 	label[++ltop].labelvalue = lno++;
 }
 
-
+/*
+ * We are now at the end of loop. Two things are required:
+ * 1. goto to the beginning of loop, and 2. the label denoting end of loop
+ * The label of beginning of loop is at label[ltop-1]. Generated (and printed) using label4()
+ * The label of end of loop is at label[ltop]. Generated using label1()
+ */
 void label5()
 {
+	// goto to the beginning of loop
 	strcpy(temp,"L");
 	char buffer[100];
 	itoa(label[ltop-1].labelvalue,buffer,10);
 	strcat(temp,buffer);
 	printf("GoTo %s:\n",temp);
+
+	// Label denoting end of loop
 	strcpy(temp,"L");
 	itoa(label[ltop].labelvalue,buffer,10);
 	strcat(temp,buffer);
 	printf("%s:\n",temp);
+
+	// We are done with both labels. Hence, we will remove them from stack.
 	ltop = ltop - 2;
     
    
@@ -691,16 +745,30 @@ void label8()
 	label[++ltop].labelvalue = lno++;
 }
 
+/*
+ * Generate code for beginning of function currfunc
+ * currfunc contains curid, which contains yytext
+ */
 void funcgen()
 {
-	printf("func begin %s\n",currfunc);
+	printf("begin %s\n",currfunc);
 }
 
+/*
+ * Generate code for end of function currfunc
+ * currfunc contains curid, which contains yytext
+ */
 void funcgenend()
 {
-	printf("func end\n\n");
+	printf("end %s\n\n", currfunc);
 }
 
+/*
+ * Generate code for actual parameter, like param 2
+ * param may be an identifier or a constant.
+ * If it is an identifier, then i will be 1. We can then print curid.
+ * If it is a constant, then i will be > 1. We can then print curval.
+ */
 void arggen(int i)
 {
     if(i==1)
@@ -713,10 +781,14 @@ void arggen(int i)
     }
 }
 
+/*
+ * Generate code for calling function, whose name is in currfunccall
+ * params have already been printed. Number of params is saved in call_params_count
+ */
 void callgen()
 {
 	push("result");
-	printf("call %s, %d\n",currfunccall,call_params_count);
+	printf("call %s, %d\n", currfunccall, call_params_count);
 }
 
 
