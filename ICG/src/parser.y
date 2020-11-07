@@ -124,7 +124,7 @@ variable_declaration_list
 			: variable_declaration_list ',' variable_declaration_identifier | variable_declaration_identifier;
 
 variable_declaration_identifier 
-			: identifier {if(isIdentifierAlreadyDeclared(curid)){printf("isIdentifierAlreadyDeclared\n");exit(0);}insertIdentifierNestVal(curid,currnest); ins();  } vdi   
+			: identifier {if(isIdentifierAlreadyDeclared(curid)){printf("\nLine %d: Semantic error: Variable '%s' is already declared.\n\n", yylineno, curid);exit(0);}insertIdentifierNestVal(curid,currnest); ins();  } vdi   
 			  | array_identifier {if(isIdentifierAlreadyDeclared(curid)){printf("isIdentifierAlreadyDeclared\n");exit(0);}insertIdentifierNestVal(curid,currnest); ins();  } vdi;
 			
 			
@@ -812,7 +812,6 @@ int main(int argc , char **argv)
 
 void yyerror(char *s)
 {
-	printf("%d %s %s\n", yylineno, s, yytext);
 	flag=1;
 	printf("Line %d: Error: %s, near \'%s\'\n", yylineno, s, yytext);
 	exit(7);
