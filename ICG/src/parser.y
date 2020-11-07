@@ -368,7 +368,7 @@ mutable
 						  if(isIdentifierAFunc(curid))
 						  {printf("Function name used as Identifier\n"); exit(8);}
 			              if(!identifierInScope(curid))
-			              {printf("%s\n",curid);printf("\nLine %d: Semantic error: Variable '%s' is already declared.\n\n", yylineno, curid);exit(0);} 
+			              {printf("%s\n",curid);printf("\nLine %d: Semantic error: Variable '%s' is undeclared.\n\n", yylineno, curid);exit(0);} 
 			              if(!isIdentifierAnArray(curid))
 			              {printf("%s\n",curid);printf("Array ID has no subscript\n");exit(0);}
 			              if(getFirstCharOfIDDatatype(curid,0)=='i' || getFirstCharOfIDDatatype(curid,1)== 'c')
@@ -712,7 +712,7 @@ void label6()
 {
         strcpy(temp, "L");
         char buffer[100];
-        itoa(label[ltop-case_stmt_num].labelvalue, buffer, 10);
+        itoa(label[ltop-case_stmt_num-1].labelvalue, buffer, 10);
         strcat(temp, buffer);
         printf("%s:\n",temp);
         int i, num=0;
